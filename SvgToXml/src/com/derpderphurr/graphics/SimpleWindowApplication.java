@@ -43,7 +43,7 @@ public class SimpleWindowApplication extends Application {
 	@Override
 	public void start(Stage arg0) throws Exception {
 		HBox container = new HBox();
-		container.setStyle("-fx-background-color: #000000");
+		//container.setStyle("-fx-background-color: #000000");
 		container.getChildren().addAll(Queen,King,Knight,Bishop,Rook,Pawn);
 		Scene s = new Scene(container);
 		
