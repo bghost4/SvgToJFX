@@ -20,7 +20,10 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Paint;
+import javafx.scene.paint.Stop;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.FillRule;
 import javafx.scene.shape.SVGPath;
@@ -35,7 +38,7 @@ public class SvgToFXBuilder {
 	protected DocumentBuilderFactory dbf;
 	protected List<String> lookfor;
 	protected List<String> knownStyleAttribs;
-	protected Map<String,Paint> namedFills;
+	protected Map<String,Paint> namedPaints;
 	
 	public javafx.scene.Node createInstanceFromId(String id) {
 		if(elementMap.containsKey(id)) {
@@ -52,7 +55,7 @@ public class SvgToFXBuilder {
 		docs = new HashMap<>();
 		dbf = DocumentBuilderFactory.newInstance();
 		lookfor = new ArrayList<>();
-		
+		namedPaints = new HashMap<>();
 		lookfor.add("svg");
 		lookfor.add("g");
 		lookfor.add("rect");
@@ -64,7 +67,7 @@ public class SvgToFXBuilder {
 		lookfor.add("line");
 		lookfor.add("linearGradient");
 		
-		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule");
+		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule","stop-color","stop-opacity");
 		
 	}
 	
@@ -167,8 +170,38 @@ public class SvgToFXBuilder {
 	}
 	
 	private void parseLinearGradient(Element e) {
+		List<Stop> lgStops = new ArrayList<>();
+		NodeList children = e.getChildNodes();
+		for(int i=0; i < children.getLength(); i++) {
+			if(children.item(i) instanceof Element && ((Element)children.item(i)).getNodeName().equals("stop")) {
+				lgStops.add(parseStop((Element)children.item(i)));
+			}
+		}
+		double x1,x2,y1,y2;
+		x1 = Double.parseDouble(e.getAttribute("x1"));
+		x2 = Double.parseDouble(e.getAttribute("x2"));
+		y1 = Double.parseDouble(e.getAttribute("y1"));
+		y2 = Double.parseDouble(e.getAttribute("y2"));
+		LinearGradient lg = new LinearGradient(x1, y1, x2, y2, true, CycleMethod.NO_CYCLE, lgStops);
+		if( e.hasAttribute("id") && !e.getAttribute("id").isEmpty()) {
+			namedPaints.put(e.getAttribute("id"), lg);
+		}
+	}
+
+	private Stop parseStop(Element item) {
+		Color c = null;
+		Stop s = null;
+		Map<String,String> style = findStyles(item);
+		if(style.containsKey("stop-opacity")) {
+			c = Color.web(style.get("stop-color").trim(),Double.parseDouble(style.get("stop-opacity")));
+		} else {
+			c = Color.web(style.get("stop-color").trim());
+		}
+		System.out.println("New Stop Color: "+c.toString()+" Offset: "+item.getAttribute("offset"));
+		s = new Stop(Double.parseDouble(item.getAttribute("offset")),c);
 		
 		
+		return s;
 	}
 
 	protected void applyStyle(Map<String,String> style,Shape s) {
@@ -180,7 +213,16 @@ public class SvgToFXBuilder {
 					if(value.trim().equals("none")) {
 						s.setStroke(Color.TRANSPARENT);
 					} else { 
-						s.setStroke(Color.web(value.trim()));
+						if(value.startsWith("url(#")) {
+							
+							
+						} else {
+							if(style.containsKey("stroke-opacity")) {
+								s.setStroke(Color.web(value.trim(),Double.parseDouble(style.get("stroke-opacity"))));
+							} else {
+								s.setStroke(Color.web(value.trim()));
+							}
+						}
 					}
 					break;
 				case "fill":
@@ -189,11 +231,10 @@ public class SvgToFXBuilder {
 						
 						s.setFill(Color.TRANSPARENT);
 					} else {
-						try {
-						s.setFill(Color.web(style.get(key)));
-						} catch (IllegalArgumentException e) {
-							System.err.println("Invalid Color specification: "+style.get(key));
-							e.printStackTrace();
+						
+						if(value.startsWith("url(#")) {
+							String id = value.substring(4, value.length()-1);
+							s.setFill(namedPaints.get(id));
 						}
 					}
 					break;
