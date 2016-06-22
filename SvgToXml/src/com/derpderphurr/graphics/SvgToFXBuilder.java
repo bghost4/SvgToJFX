@@ -182,7 +182,7 @@ public class SvgToFXBuilder {
 		x2 = Double.parseDouble(e.getAttribute("x2"));
 		y1 = Double.parseDouble(e.getAttribute("y1"));
 		y2 = Double.parseDouble(e.getAttribute("y2"));
-		LinearGradient lg = new LinearGradient(x1, y1, x2, y2, true, CycleMethod.NO_CYCLE, lgStops);
+		LinearGradient lg = new LinearGradient(x1, y1, x2, y2, false, CycleMethod.REPEAT, lgStops);
 		if( e.hasAttribute("id") && !e.getAttribute("id").isEmpty()) {
 			namedPaints.put(e.getAttribute("id"), lg);
 		}
@@ -235,6 +235,12 @@ public class SvgToFXBuilder {
 						if(value.startsWith("url(#")) {
 							String id = value.substring(4, value.length()-1);
 							s.setFill(namedPaints.get(id));
+						} else if( value.startsWith("#")) {
+							if(style.containsKey("fill-opacity")) {
+								s.setFill(Color.web(value.trim(),Double.parseDouble(style.get("fill-opacity"))));
+							} else {
+								s.setFill(Color.web(value.trim()));
+							}
 						}
 					}
 					break;
