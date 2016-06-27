@@ -61,7 +61,7 @@ public class SvgToFXBuilder {
 		docs = new HashMap<>();
 		dbf = DocumentBuilderFactory.newInstance();
 		lookfor = new ArrayList<>();
-		
+		namedPaints = new HashMap<>();
 		namedFills = new HashMap<>();
 		
 		lookfor.add("svg");
@@ -75,7 +75,7 @@ public class SvgToFXBuilder {
 		lookfor.add("line");
 		lookfor.add("linearGradient");
 		
-		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule");
+		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule","stop-color","stop-opacity");
 		
 	}
 	
@@ -261,6 +261,7 @@ public class SvgToFXBuilder {
 			}
 		}
 		
+		return s;
 	}
 
 	protected Double percentToDouble(String s) {
@@ -296,7 +297,16 @@ public class SvgToFXBuilder {
 					if(value.trim().equals("none")) {
 						s.setStroke(Color.TRANSPARENT);
 					} else { 
-						s.setStroke(Color.web(value.trim()));
+						if(value.startsWith("url(#")) {
+							
+							
+						} else {
+							if(style.containsKey("stroke-opacity")) {
+								s.setStroke(Color.web(value.trim(),Double.parseDouble(style.get("stroke-opacity"))));
+							} else {
+								s.setStroke(Color.web(value.trim()));
+							}
+						}
 					}
 					break;
 				case "fill":
@@ -319,11 +329,16 @@ public class SvgToFXBuilder {
 						}
 					} else {
 						System.out.println("Setting Fill: "+value);
-						try {
-						s.setFill(Color.web(style.get(key)));
-						} catch (IllegalArgumentException e) {
-							System.err.println("Invalid Color specification: "+style.get(key));
-							e.printStackTrace();
+						
+						if(value.startsWith("url(#")) {
+							String id = value.substring(4, value.length()-1);
+							s.setFill(namedPaints.get(id));
+						} else if( value.startsWith("#")) {
+							if(style.containsKey("fill-opacity")) {
+								s.setFill(Color.web(value.trim(),Double.parseDouble(style.get("fill-opacity"))));
+							} else {
+								s.setFill(Color.web(value.trim()));
+							}
 						}
 					}
 					break;
