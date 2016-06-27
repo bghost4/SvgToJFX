@@ -24,6 +24,7 @@ import javafx.application.Application;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.FillRule;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.shape.Shape;
 import javafx.scene.shape.StrokeLineCap;
@@ -147,6 +148,18 @@ public class SvgToFXBuilder {
 				p.setContent(e.getAttribute("d"));
 				applyStyle(style, p);
 				n = p;
+				break;
+			case "rect":
+				Rectangle rect = new Rectangle();
+					rect.setX(Double.parseDouble(e.getAttribute("x")));
+					rect.setY(Double.parseDouble(e.getAttribute("y")));
+					rect.setWidth(Double.parseDouble(e.getAttribute("width")));
+					rect.setHeight(Double.parseDouble(e.getAttribute("height")));
+					if(e.hasAttribute("rx") && e.hasAttribute("ry")) {
+						rect.setArcWidth(Double.parseDouble(e.getAttribute("rx")));
+						rect.setArcHeight(Double.parseDouble(e.getAttribute("ry")));
+					}
+					n = rect;
 				break;
 			default:
 				System.out.println(e.getNodeName()+" has not yet been implemented");
