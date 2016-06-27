@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.stream.Stream;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -19,10 +20,11 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import javafx.application.Application;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.FillRule;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.shape.Shape;
 import javafx.scene.shape.StrokeLineCap;
@@ -35,7 +37,6 @@ public class SvgToFXBuilder {
 	protected DocumentBuilderFactory dbf;
 	protected List<String> lookfor;
 	protected List<String> knownStyleAttribs;
-	protected Map<String,Paint> namedFills;
 	
 	public javafx.scene.Node createInstanceFromId(String id) {
 		if(elementMap.containsKey(id)) {
@@ -62,7 +63,6 @@ public class SvgToFXBuilder {
 		lookfor.add("polygon");
 		lookfor.add("polyline");
 		lookfor.add("line");
-		lookfor.add("linearGradient");
 		
 		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule");
 		
@@ -131,6 +131,7 @@ public class SvgToFXBuilder {
 			if(e.hasAttribute("style")) {
 				style.putAll(convertStyle(e.getAttribute("style")));
 			}
+			
 			switch(e.getNodeName()) {
 			case "circle":
 				Circle c = new Circle();
@@ -151,11 +152,23 @@ public class SvgToFXBuilder {
 			case "linearGradient":
 				parseLinearGradient(e);
 				break;
+			case "rect":
+				Rectangle rect = new Rectangle();
+					rect.setX(Double.parseDouble(e.getAttribute("x")));
+					rect.setY(Double.parseDouble(e.getAttribute("y")));
+					rect.setWidth(Double.parseDouble(e.getAttribute("width")));
+					rect.setHeight(Double.parseDouble(e.getAttribute("height")));
+					if(e.hasAttribute("rx") && e.hasAttribute("ry")) {
+						rect.setArcWidth(Double.parseDouble(e.getAttribute("rx")));
+						rect.setArcHeight(Double.parseDouble(e.getAttribute("ry")));
+					}
+					n = rect;
+				break;
 			default:
 				System.out.println(e.getNodeName()+" has not yet been implemented");
 				break;
 			}
-			if(n != null && e.hasAttribute("id") && e.getAttribute("id") != null && !e.getAttribute("id").isEmpty() ) {
+			if(e.hasAttribute("id")) {
 				System.out.println("SVG ID Set , Node id = "+e.getAttribute("id"));
 				n.setId(e.getAttribute("id"));
 			}
@@ -167,7 +180,7 @@ public class SvgToFXBuilder {
 	}
 	
 	private void parseLinearGradient(Element e) {
-		
+		// TODO Auto-generated method stub
 		
 	}
 
