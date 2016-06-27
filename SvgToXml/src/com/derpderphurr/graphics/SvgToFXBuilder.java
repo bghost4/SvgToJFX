@@ -61,7 +61,6 @@ public class SvgToFXBuilder {
 		docs = new HashMap<>();
 		dbf = DocumentBuilderFactory.newInstance();
 		lookfor = new ArrayList<>();
-		namedPaints = new HashMap<>();
 		namedFills = new HashMap<>();
 		
 		lookfor.add("svg");
@@ -260,8 +259,6 @@ public class SvgToFXBuilder {
 				
 			}
 		}
-		
-		return s;
 	}
 
 	protected Double percentToDouble(String s) {
@@ -330,9 +327,10 @@ public class SvgToFXBuilder {
 					} else {
 						System.out.println("Setting Fill: "+value);
 						
+						//This is from the merge
 						if(value.startsWith("url(#")) {
 							String id = value.substring(4, value.length()-1);
-							s.setFill(namedPaints.get(id));
+							s.setFill(namedFills.get(id));
 						} else if( value.startsWith("#")) {
 							if(style.containsKey("fill-opacity")) {
 								s.setFill(Color.web(value.trim(),Double.parseDouble(style.get("fill-opacity"))));
