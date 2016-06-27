@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -22,6 +24,10 @@ import org.xml.sax.SAXException;
 
 import javafx.application.Application;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Paint;
+import javafx.scene.paint.Stop;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.FillRule;
 import javafx.scene.shape.Rectangle;
@@ -37,6 +43,8 @@ public class SvgToFXBuilder {
 	protected DocumentBuilderFactory dbf;
 	protected List<String> lookfor;
 	protected List<String> knownStyleAttribs;
+	protected Map<String,Paint> namedFills; 
+	protected String currentDoc;
 	
 	public javafx.scene.Node createInstanceFromId(String id) {
 		if(elementMap.containsKey(id)) {
@@ -54,6 +62,8 @@ public class SvgToFXBuilder {
 		dbf = DocumentBuilderFactory.newInstance();
 		lookfor = new ArrayList<>();
 		
+		namedFills = new HashMap<>();
+		
 		lookfor.add("svg");
 		lookfor.add("g");
 		lookfor.add("rect");
@@ -63,6 +73,7 @@ public class SvgToFXBuilder {
 		lookfor.add("polygon");
 		lookfor.add("polyline");
 		lookfor.add("line");
+		lookfor.add("linearGradient");
 		
 		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule");
 		
@@ -70,6 +81,7 @@ public class SvgToFXBuilder {
 	
 	public void loadXML(String name,InputSource s) throws ParserConfigurationException {
 		try {
+			currentDoc = name;
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			long tStart = System.currentTimeMillis();
 			Document d = db.parse(s);
@@ -135,6 +147,7 @@ public class SvgToFXBuilder {
 			switch(e.getNodeName()) {
 			case "circle":
 				Circle c = new Circle();
+				
 				System.out.println("CIRCLE! "+e.getAttribute("cx")+","+e.getAttribute("cy")+","+e.getAttribute("r"));
 				c.setCenterX(Double.parseDouble(e.getAttribute("cx")));
 				c.setCenterY(Double.parseDouble(e.getAttribute("cy")));
@@ -162,6 +175,7 @@ public class SvgToFXBuilder {
 						rect.setArcWidth(Double.parseDouble(e.getAttribute("rx")));
 						rect.setArcHeight(Double.parseDouble(e.getAttribute("ry")));
 					}
+					applyStyle(style,rect);
 					n = rect;
 				break;
 			default:
@@ -179,12 +193,101 @@ public class SvgToFXBuilder {
 		return n;
 	}
 	
+	private void parseElementById(Document d,String id) {
+		Element e = d.getElementById(id);
+		if(e == null) {
+			System.err.println("Cannot find element with id of "+id);
+			return;
+		} else {
+			if(e.getNodeName().equals("linearGradient")) {
+				parseLinearGradient(e);
+			}
+		}
+	}
+	
 	private void parseLinearGradient(Element e) {
-		// TODO Auto-generated method stub
+		System.err.println("Calling ParseLinearGradient");
+		List<Stop> stops = new ArrayList<>();
+		
+		//Defaults for gradient
+		double x1,y1,x2,y2 = 0;
+		x2 = 1;
+		
+		
+		
+		if(e.hasChildNodes()) {
+			NodeList children = e.getChildNodes();
+			for(int i=0; i < children.getLength(); i++) {
+				if( children.item(i) instanceof Element) {
+					Element c = (Element)children.item(i);
+					if(c.getNodeName().equals("stop")) {
+						Stop s = parseStop(c);
+						stops.add(s);
+					}
+				}
+			}
+		}
+		LinearGradient lg = new LinearGradient(
+				Double.parseDouble(e.getAttribute("x1")), 
+				Double.parseDouble(e.getAttribute("y1")), 
+				Double.parseDouble(e.getAttribute("x2")), 
+				Double.parseDouble(e.getAttribute("y2")), 
+				true, //Not sure about this one... pretty sure this is absolute vs realtive
+				CycleMethod.NO_CYCLE, //same here, what is the svg equivilent 
+				stops);
+		if( e.hasAttribute("id")) {
+			namedFills.put(e.getAttribute("id"),lg);
+		} else {
+			System.out.println("Linear Gradient has No id");
+		}
+	}
+	
+	private Stop parseStop(Element e) {
+		if(e.getNodeName() != "stop") {
+			return null;
+		} else {
+			if(e.hasAttribute("stop-opacity")){
+				Stop s = new Stop(Double.parseDouble(e.getAttribute("offset")), Color.web(e.getAttribute("stop-color"),Double.parseDouble(e.getAttribute("stop-opacity") ) ) );
+				return s;
+			} else {
+				try {
+					Stop s = new Stop(Double.parseDouble(e.getAttribute("offset")), Color.web(e.getAttribute("stop-color")));
+					return s;
+				} catch ( IllegalArgumentException ex) {
+					System.err.println("Element: "+e.toString());
+					return null;
+				}
+				
+			}
+		}
 		
 	}
 
+	protected Double percentToDouble(String s) {
+		Pattern pPercent = Pattern.compile("(\\d+)%");
+		Matcher m = pPercent.matcher(s);
+		if(m.find()) {
+			String group = m.group(1);
+			return Double.parseDouble(group);
+		} else { return null; }
+	}
+	
+	protected String getRefId(String n) {
+		Pattern p = Pattern.compile("url\\(#(\\w+)\\)");
+		Matcher m = p.matcher(n);
+		
+		if(m.find()) {
+			String group = m.group(1);
+			System.out.println("Refid="+group);
+			return group;
+		} else {
+			System.out.println("unable to parse Reference");
+		}
+		return null;
+	}
+	
 	protected void applyStyle(Map<String,String> style,Shape s) {
+		
 		System.out.println("Applying Following Style Parameters to Shape: "+s.getClass().getName());
 		for(String key:style.keySet()) {
 			String value = style.get(key);
@@ -197,11 +300,25 @@ public class SvgToFXBuilder {
 					}
 					break;
 				case "fill":
-					
 					if(value.trim().equals("none")) {
-						
 						s.setFill(Color.TRANSPARENT);
+					} else if(value.startsWith("url(#")) {
+						System.out.println("Fill value is Reference: \""+value+"\"");
+						String refid = getRefId(value);
+						if(namedFills.containsKey(refid)) {
+							s.setFill(namedFills.get(refid));
+							System.out.println("Applying Linear Gradient to "+s);
+						} else {
+							parseElementById(docs.get(currentDoc), refid);
+							System.out.println("Cannot find "+refid);
+							if(namedFills.containsKey(refid)) {
+								s.setFill(namedFills.get(refid));
+							} else {
+								System.err.println("Referenced Style does not exist");
+							}
+						}
 					} else {
+						System.out.println("Setting Fill: "+value);
 						try {
 						s.setFill(Color.web(style.get(key)));
 						} catch (IllegalArgumentException e) {
@@ -241,6 +358,7 @@ public class SvgToFXBuilder {
 						//don't bother stetting
 					} else {
 						System.out.println("Stroke Dash Array: "+value);
+						//TODO implement me
 					}
 					break;
 				default:
@@ -270,6 +388,9 @@ public class SvgToFXBuilder {
 		if(d.hasAttribute("id") && lookfor.contains(d.getNodeName())) {
 			elementMap.put(d.getAttribute("id"), d);
 			System.out.println("Found Element with idTag: "+d.getNodeName()+":"+d.getAttribute("id"));
+			if(d.getNodeName().equals("linearGradient")) {
+				parseLinearGradient(d);
+			}
 		}
 		if(d.hasChildNodes()) {
 			NodeList nlChildren = d.getChildNodes();
