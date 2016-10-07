@@ -23,6 +23,8 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import javafx.application.Application;
+import javafx.collections.ObservableList;
+import javafx.scene.Parent;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
@@ -45,6 +47,39 @@ public class SvgToFXBuilder {
 	protected List<String> knownStyleAttribs;
 	protected Map<String,Paint> namedFills; 
 	protected String currentDoc;
+	
+	/**
+	 * Utility function to find one of the inner names in an already instantiated group
+	 * @param name
+	 * @param s
+	 * @return
+	 */
+	public static javafx.scene.Node findNode(String name,javafx.scene.Node s) {
+		if(s instanceof Parent) {
+			ObservableList<javafx.scene.Node> children = ((Parent)s).getChildrenUnmodifiable();
+			javafx.scene.Node c = null;
+			for(javafx.scene.Node n : children) {
+				if(n instanceof javafx.scene.Parent) {
+					javafx.scene.Node a = findNode(name,n);
+					if(a != null) {
+						return a;
+					}
+				} else {
+					if(n.getId().equals(name)) {
+						return n;
+					}
+				}
+			}
+			return c;
+		} else {
+			if(s == null) { return null; }
+			String id = s.getId();
+			if(id != null && s.getId().equals(name)) {
+				return s;
+			}
+		}
+		return null;
+	}
 	
 	public javafx.scene.Node createInstanceFromId(String id) {
 		if(elementMap.containsKey(id)) {
@@ -75,7 +110,6 @@ public class SvgToFXBuilder {
 		lookfor.add("linearGradient");
 		
 		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule","stop-color","stop-opacity");
-		
 	}
 	
 	public void loadXML(String name,InputSource s) throws ParserConfigurationException {
@@ -97,6 +131,12 @@ public class SvgToFXBuilder {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	public void loadXML(Document d,String name) {
+		currentDoc = name;
+		docs.put(name, d);
+		findElements(d.getDocumentElement());
 	}
 
 	protected Map<String,String> findStyles(Element e) {
@@ -209,10 +249,7 @@ public class SvgToFXBuilder {
 		List<Stop> stops = new ArrayList<>();
 		
 		//Defaults for gradient
-		double x1,y1,x2,y2 = 0;
-		x2 = 1;
-		
-		
+		double x1=0,y1=0,x2=1,y2=0;
 		
 		if(e.hasChildNodes()) {
 			NodeList children = e.getChildNodes();
@@ -227,10 +264,10 @@ public class SvgToFXBuilder {
 			}
 		}
 		LinearGradient lg = new LinearGradient(
-				Double.parseDouble(e.getAttribute("x1")), 
-				Double.parseDouble(e.getAttribute("y1")), 
-				Double.parseDouble(e.getAttribute("x2")), 
-				Double.parseDouble(e.getAttribute("y2")), 
+				x1, 
+				y1, 
+				x2, 
+				y2, 
 				true, //Not sure about this one... pretty sure this is absolute vs realtive
 				CycleMethod.NO_CYCLE, //same here, what is the svg equivilent 
 				stops);
@@ -395,6 +432,8 @@ public class SvgToFXBuilder {
 		}
 		return styleOptions;
 	}
+	
+	
 	
 	private void findElements(Element d) {
 		
