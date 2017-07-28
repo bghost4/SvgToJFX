@@ -5,12 +5,9 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.xml.sax.InputSource;
 
 import javafx.application.Application;
-import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.layout.HBox;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 
 public class ChessPieces extends Application {

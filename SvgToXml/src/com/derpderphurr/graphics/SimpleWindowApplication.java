@@ -1,5 +1,9 @@
 package com.derpderphurr.graphics;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.InputSource;
@@ -7,7 +11,10 @@ import org.xml.sax.InputSource;
 import javafx.application.Application;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Shape;
 import javafx.stage.Stage;
 
 public class SimpleWindowApplication extends Application {
@@ -19,9 +26,46 @@ public class SimpleWindowApplication extends Application {
 		
 		SvgToFXBuilder b = new SvgToFXBuilder();
 		try {
-			b.loadXML("testfile", new InputSource(SvgToFXBuilder.class.getResourceAsStream("/NewTux.svg")));
-			tux = b.createInstanceFromId("1369");
+			b.setDefaultEnteredHandler(meh -> { 
+				if(meh.getSource() instanceof Shape) {
+					Shape shape = (Shape)meh.getSource();
+					shape.setFill(Color.AQUA);
+					System.out.println("Mouse Entered: "+shape.getId());
+				} else {
+					System.err.println("Bad Class: "+meh.getSource().getClass().getName());
+				}
+			});
+			
+			b.setDefaultClickHandler(meh -> { 
+				if(meh.getSource() instanceof Shape) {
+					Shape shape = (Shape)meh.getSource();
+					//shape.setFill(Color.AQUA);
+					System.out.println("Mouse Entered: "+shape.getId());
+					if(meh.getButton() == MouseButton.SECONDARY) {
+						//shape.setVisible(false);
+						shape.getStrokeDashArray().setAll(25.0,20.0,5.0,20.0);
+						shape.setOnMouseEntered(null);
+					} else if (meh.getButton() == MouseButton.PRIMARY) {
+						System.out.println("Shape Clicked: "+shape.getId());
+					}
+				} else {
+					System.err.println("Bad Class: "+meh.getSource().getClass().getName());
+				}
+			});
+			
+			b.setDefaultExitHandler(meh -> { 
+				if(meh.getSource() instanceof Shape) {
+					Shape shape = (Shape)meh.getSource();
+					shape.setFill(Color.TRANSPARENT);
+				}
+			});
+			
+			b.loadXML("testfile", new InputSource(new FileReader(new File("src/stl_out_ungroup.svg"))));
+			tux = b.createInstanceFromId("svg2");
 		} catch (ParserConfigurationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

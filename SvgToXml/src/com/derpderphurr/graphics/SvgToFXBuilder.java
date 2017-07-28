@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -22,9 +20,11 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import javafx.application.Application;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
+import javafx.geometry.Point2D;
 import javafx.scene.Parent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
@@ -37,6 +37,8 @@ import javafx.scene.shape.SVGPath;
 import javafx.scene.shape.Shape;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.shape.StrokeLineJoin;
+import javafx.scene.transform.Affine;
+import javafx.scene.transform.Transform;
 
 public class SvgToFXBuilder {
 	protected Map<String,Element> elementMap;
@@ -48,12 +50,20 @@ public class SvgToFXBuilder {
 	protected Map<String,Paint> namedFills; 
 	protected String currentDoc;
 	
+	protected EventHandler<? super MouseEvent> defaultEnteredHandler;
+	protected EventHandler<? super MouseEvent> defaultExitHandler;
+	protected EventHandler<? super MouseEvent> defaultPressedHandler;
+	protected EventHandler<? super MouseEvent> defaultReleasedHandler;
+	protected EventHandler<? super MouseEvent> defaultClickHandler;
 	/**
 	 * Utility function to find one of the inner names in an already instantiated group
 	 * @param name
 	 * @param s
 	 * @return
 	 */
+	
+	
+	
 	public static javafx.scene.Node findNode(String name,javafx.scene.Node s) {
 		if(s instanceof Parent) {
 			ObservableList<javafx.scene.Node> children = ((Parent)s).getChildrenUnmodifiable();
@@ -81,6 +91,54 @@ public class SvgToFXBuilder {
 		return null;
 	}
 	
+	
+
+	public EventHandler<? super MouseEvent> getDefaultClickHandler() {
+		return defaultClickHandler;
+	}
+
+
+
+	public void setDefaultClickHandler(EventHandler<? super MouseEvent> defaultClickHandler) {
+		this.defaultClickHandler = defaultClickHandler;
+	}
+
+
+
+	public void setDefaultEnteredHandler(EventHandler<? super MouseEvent> defaultEnteredHandler) {
+		this.defaultEnteredHandler = defaultEnteredHandler;
+	}
+
+	
+
+	public EventHandler<? super MouseEvent> getDefaultExitHandler() {
+		return defaultExitHandler;
+	}
+
+	public void setDefaultExitHandler(EventHandler<? super MouseEvent> defaultExitHandler) {
+		this.defaultExitHandler = defaultExitHandler;
+	}
+
+	public EventHandler<? super MouseEvent> getDefaultPressedHandler() {
+		return defaultPressedHandler;
+	}
+
+	public void setDefaultPressedHandler(EventHandler<? super MouseEvent> defaultPressedHandler) {
+		this.defaultPressedHandler = defaultPressedHandler;
+	}
+
+	public EventHandler<? super MouseEvent> getDefaultReleasedHandler() {
+		return defaultReleasedHandler;
+	}
+
+	public void setDefaultReleasedHandler(EventHandler<? super MouseEvent> defaultReleasedHandler) {
+		this.defaultReleasedHandler = defaultReleasedHandler;
+	}
+
+	public EventHandler<? super MouseEvent> getDefaultEnteredHandler() {
+		return defaultEnteredHandler;
+	}
+
 	public javafx.scene.Node createInstanceFromId(String id) {
 		if(elementMap.containsKey(id)) {
 			System.out.println("Generating "+id);
@@ -109,7 +167,7 @@ public class SvgToFXBuilder {
 		lookfor.add("line");
 		lookfor.add("linearGradient");
 		
-		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule","stop-color","stop-opacity");
+		knownStyleAttribs = Arrays.asList("stroke","stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin","stroke-dasharray","fill","fill-rule","stop-color","stop-opacity","transform");
 	}
 	
 	public void loadXML(String name,InputSource s) throws ParserConfigurationException {
@@ -186,8 +244,8 @@ public class SvgToFXBuilder {
 			switch(e.getNodeName()) {
 			case "circle":
 				Circle c = new Circle();
-				
-				System.out.println("CIRCLE! "+e.getAttribute("cx")+","+e.getAttribute("cy")+","+e.getAttribute("r"));
+
+				//System.out.println("CIRCLE! "+e.getAttribute("cx")+","+e.getAttribute("cy")+","+e.getAttribute("r")+" "+e.getAttribute("id"));
 				c.setCenterX(Double.parseDouble(e.getAttribute("cx")));
 				c.setCenterY(Double.parseDouble(e.getAttribute("cy")));
 				c.setRadius(Double.parseDouble(e.getAttribute("r")));
@@ -195,11 +253,12 @@ public class SvgToFXBuilder {
 				n = c;
 				break;
 			case "path":
-				System.out.println("PATH!");
+				//System.out.println("PATH!");
 				SVGPath p = new SVGPath();
 				p.setContent(e.getAttribute("d"));
 				applyStyle(style, p);
 				n = p;
+				
 				break;
 			case "linearGradient":
 				parseLinearGradient(e);
@@ -217,18 +276,40 @@ public class SvgToFXBuilder {
 					applyStyle(style,rect);
 					n = rect;
 				break;
+			case "svg":
+				javafx.scene.Group g = new javafx.scene.Group();
+				NodeList nl = e.getChildNodes();
+				for(int i=0; i < nl.getLength(); i++) {
+					if(nl.item(i) instanceof Element) {
+						javafx.scene.Node ni = generateFX((Element)nl.item(i),style); 
+						if(ni != null) {
+							g.getChildren().add(ni);
+						}
+					} else {
+						//System.out.println("Not an element: "+nl.item(i).getNodeName()+":"+nl.item(i).getNodeValue());
+					}
+				}
+				n = g;
+				break;
 			default:
 				System.out.println(e.getNodeName()+" has not yet been implemented");
 				break;
 			}
 			if(e.hasAttribute("id")) {
-				System.out.println("SVG ID Set , Node id = "+e.getAttribute("id"));
+				//System.out.println("SVG ID Set , Node id = "+e.getAttribute("id"));
 				n.setId(e.getAttribute("id"));
 			}
 		} else {
 			
 		}
-		
+		if( n != null ) {
+				n.setOnMouseEntered(defaultEnteredHandler);
+				n.setOnMouseExited(defaultExitHandler);
+				n.setOnMousePressed(defaultPressedHandler);
+				n.setOnMouseReleased(defaultReleasedHandler);
+				n.setOnMouseClicked(defaultClickHandler);
+			
+		}
 		return n;
 	}
 	
@@ -323,7 +404,7 @@ public class SvgToFXBuilder {
 	
 	protected void applyStyle(Map<String,String> style,Shape s) {
 		
-		System.out.println("Applying Following Style Parameters to Shape: "+s.getClass().getName());
+		//System.out.println("Applying Following Style Parameters to Shape: "+s.getClass().getName());
 		for(String key:style.keySet()) {
 			String value = style.get(key);
 			switch(key) {
@@ -409,6 +490,65 @@ public class SvgToFXBuilder {
 					} else {
 						System.out.println("Stroke Dash Array: "+value);
 						//TODO implement me
+						//s.getStrokeDashArray().setAll(-values-)
+					}
+					break;
+				case "stroke-opacity":
+					s.setOpacity(Double.parseDouble(value));
+					break;
+				case "transform":
+					String doublePattern = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?";
+					if(value.toUpperCase().startsWith("TRANSLATE")) {
+						//regex stolen from (http://www.regular-expressions.info/floatingpoint.html)
+						
+						Pattern translateRegex = Pattern.compile("^translate\\(("+doublePattern+"),("+doublePattern+")\\)");
+						Matcher m = translateRegex.matcher(value.toLowerCase());
+						if(m.find()) {
+							s.translateXProperty().set(Double.parseDouble(m.group(1)));
+							s.translateYProperty().set(Double.parseDouble(m.group(2)));
+							System.out.println(String.format("translate(%f,%f)",Double.parseDouble(m.group(1)),Double.parseDouble(m.group(2)) ));
+						} else {
+							System.out.println("Translate found but Error Parsing");
+							
+						}
+					} else if(value.toUpperCase().startsWith("MATRIX")) {
+						Pattern matrixPattern = Pattern.compile("^matrix\\(("+doublePattern+"),("+doublePattern+"),("+doublePattern+"),("+doublePattern+"),("+doublePattern+"),("+doublePattern+")\\)");
+						
+						Matcher m = matrixPattern.matcher(value.toLowerCase());
+						if(m.find()) {
+							double a,b,c,d,e,f;
+							/*
+							System.out.println("Group1:("+m.group(1)+")");
+							System.out.println("Group2:("+m.group(2)+")");
+							System.out.println("Group3:("+m.group(3)+")");
+							System.out.println("Group4:("+m.group(4)+")");
+							System.out.println("Group5:("+m.group(5)+")");
+							System.out.println("Group6:("+m.group(6)+")");
+							
+							System.out.println("\tRegex: "+matrixPattern.toString());
+							System.out.println("\tdata: "+value);
+							*/
+							a = Double.parseDouble(m.group(1));
+							b = Double.parseDouble(m.group(3));
+							c = Double.parseDouble(m.group(5));
+							d = Double.parseDouble(m.group(7));
+							e = Double.parseDouble(m.group(9));
+							f = Double.parseDouble(m.group(11));
+							
+							Affine affine = Transform.affine(
+									a, c, 1, e, 
+									b, d, 1, f, 
+									0, 0, 0, 1);
+							s.getTransforms().add(affine);
+							
+						} else {
+							System.out.println("matrix found but Error Parsing");
+							System.out.println("\tRegex: "+matrixPattern.toString());
+							System.out.println("\tdata: "+value);
+							
+						}
+					} else {
+						System.out.println("Unimplemented Transform: "+value);
 					}
 					break;
 				default:
