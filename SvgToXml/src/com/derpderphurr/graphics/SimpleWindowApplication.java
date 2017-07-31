@@ -32,7 +32,7 @@ public class SimpleWindowApplication extends Application {
 					shape.setFill(Color.AQUA);
 					System.out.println("Mouse Entered: "+shape.getId());
 				} else {
-					System.err.println("Bad Class: "+meh.getSource().getClass().getName());
+					System.err.println("Bad Class: "+meh.getSource().getClass().getName()+" ID: "+((Node)meh.getSource()).getId());
 				}
 			});
 			
@@ -43,8 +43,9 @@ public class SimpleWindowApplication extends Application {
 					System.out.println("Mouse Entered: "+shape.getId());
 					if(meh.getButton() == MouseButton.SECONDARY) {
 						//shape.setVisible(false);
-						shape.getStrokeDashArray().setAll(25.0,20.0,5.0,20.0);
-						shape.setOnMouseEntered(null);
+						//shape.getStrokeDashArray().setAll(25.0,20.0,5.0,20.0);
+						//shape.setOnMouseEntered(null);
+						shape.toBack();
 					} else if (meh.getButton() == MouseButton.PRIMARY) {
 						System.out.println("Shape Clicked: "+shape.getId());
 					}
