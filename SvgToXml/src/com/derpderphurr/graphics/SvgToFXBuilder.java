@@ -66,7 +66,7 @@ public class SvgToFXBuilder {
 	 * @return
 	 */
 	
-	
+	public Document getDocument() { return docs.get(currentDoc); }
 	
 	public static javafx.scene.Node findNode(String name,javafx.scene.Node s) {
 		if(s instanceof Parent) {
@@ -324,14 +324,17 @@ public class SvgToFXBuilder {
 		} else {
 			System.err.println("Unsure how to handle: "+e.getNodeName());
 		}
-		if( n != null  ) {
+		if( n != null && !(n instanceof Group) ) {
+			System.out.println("Mouse Handler was set on: "+e.getAttribute("id"));
 				n.setOnMouseEntered(defaultEnteredHandler);
 				n.setOnMouseExited(defaultExitHandler);
 				n.setOnMousePressed(defaultPressedHandler);
 				n.setOnMouseReleased(defaultReleasedHandler);
 				n.setOnMouseClicked(defaultClickHandler);
-			
+				return n;
 		}
+		
+		
 		return n;
 	}
 	
@@ -420,7 +423,7 @@ public class SvgToFXBuilder {
 				Affine affine = Transform.affine(
 						a, c, 1, e, 
 						b, d, 1, f, 
-						0, 0, 0, 1);
+						0, 0, 1, 1);
 				return affine;
 				
 			} else {
@@ -576,6 +579,7 @@ public class SvgToFXBuilder {
 					List<String> stransforms = splitTransforms(value);
 					List<Transform> trans = stransforms.stream().map(strans -> parseTransform(strans)).collect(Collectors.toList());
 					s.getTransforms().addAll(trans);
+					//System.out.println(s.get);
 					break;
 				default:
 					System.out.println("UNIMPLEMENTED STYLE: "+key+": "+value);
